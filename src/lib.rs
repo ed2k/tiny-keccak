@@ -63,6 +63,15 @@ const RC: [u64; 24] = [
     0x8000000080008081u64, 0x8000000000008080u64, 0x80000001u64, 0x8000000080008008u64
 ];
 
+const RC32: [u32; 24] = [
+    1u32, 0x8082u32, 0x0000808au32, 0x80008000u32,
+    0x808bu32, 0x80000001u32, 0x80008081u32, 0x00008009u32,
+    0x8au32, 0x88u32, 0x80008009u32, 0x8000000au32,
+    0x8000808bu32, 0x0000008bu32, 0x00008089u32, 0x00008003u32,
+    0x0008002u32, 0x00000080u32, 0x800au32, 0x8000000au32,
+    0x80008081u32, 0x00008080u32, 0x80000001u32, 0x80008008u32
+];
+
 #[allow(unused_assignments)]
 /// keccak-f[1600]
 pub fn keccakf(a: &mut [u64; PLEN]) {
@@ -124,6 +133,87 @@ pub fn keccakf(a: &mut [u64; PLEN]) {
         // Iota
         a[0] ^= RC[i];
     }
+}
+
+#[allow(unused_assignments)]
+/// keccak-f[800]
+fn keccakf800_round(a: &mut [u32; PLEN], r: usize) {
+        let mut array: [u32; 5] = [0; 5];
+
+        // Theta
+        unroll! {
+            for x in 0..5 {
+                unroll! {
+                    for y_count in 0..5 {
+                        let y = y_count * 5;
+                        array[x] ^= a[x + y];
+                    }
+                }// last round can be simplified due to partial output
+            }
+        }
+
+        unroll! {
+            for x in 0..5 {
+                unroll! {
+                    for y_count in 0..5 {
+                        let y = y_count * 5;
+                        a[y + x] ^= array[(x + 4) % 5] ^ array[(x + 1) % 5].rotate_left(1);
+                    }
+                }
+            }
+        }
+
+        // Rho and pi
+        let mut last = a[1];// last round can be simplified due to partial output
+        unroll! {
+            for x in 0..24 {
+                array[0] = a[PI[x]];
+                a[PI[x]] = last.rotate_left(RHO[x]);
+                last = array[0];
+            }
+        }
+
+        // Chi
+        unroll! {
+            for y_step in 0..5 {
+                let y = y_step * 5;
+                unroll! {
+                    for x in 0..5 {
+                        array[x] = a[y + x];
+                    }
+                }
+
+                unroll! {// last round can be simplified due to partial output
+                    for x in 0..5 {
+                        a[y + x] = array[x] ^ ((!array[(x + 1) % 5]) & (array[(x + 2) % 5]));
+                    }
+                }
+            }// last round can be simplified due to partial output
+        };
+
+        // Iota
+        a[0] ^= RC32[r];
+}
+
+pub fn keccakf800(header: &[u32; 8], seed: u64, result: &[u32; 4]) -> u64 {
+    let mut st: [u32; 25] = [0; 25];
+    for i in 0..8 {
+        st[i] = header[i];
+    }
+    st[8] = seed as u32;
+    st[9] = (seed >> 32) as u32;
+    for i in 0..4 {
+        st[10+i] = result[i];
+    }
+// last round can be simplified due to partial output
+    for r in 0..21 {
+        keccakf800_round(&mut st, r);
+    }
+
+    keccakf800_round(&mut st, 21);
+
+    let r: u64 = st[0] as u64;
+    return r << 32 | st[1] as u64; 
 }
 
 fn setout(src: &[u8], dst: &mut [u8], len: usize) {
@@ -361,3 +451,5 @@ impl XofReader {
         self.offset = offset + l;
     }
 }
+
+
