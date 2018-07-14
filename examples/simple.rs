@@ -1,6 +1,13 @@
 extern crate tiny_keccak;
 use tiny_keccak::Keccak;
 
+//extern crate libc;
+//use libc::size_t;
+
+extern {
+    fn hello(src: *const [u8; 4], dst: *mut [u8; 4]) -> u64;
+}
+
 fn main() {
     let mut sha3 = Keccak::new_sha3_256();
     let data: Vec<u8> = From::from("hello");
@@ -21,5 +28,14 @@ fn main() {
     ];
 
     assert_eq!(&res, expected);
+
+    let a = [0, 1, 2, 3];
+    let mut b = [0; 4];
+#[link(name="progpow", kind="static")]    
+    let x = unsafe { hello(&a, &mut b) };
+    println!("buffer: {} {}", x, b[3]);    
+
 }
+
+
 

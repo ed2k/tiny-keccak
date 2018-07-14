@@ -453,3 +453,19 @@ impl XofReader {
 }
 
 
+// ethash and progpow implementation
+const ETHASH_NUM_DATASET_ACCESSES:u64 = 64;
+//const full_dataset_item_parents 256
+//const PROGPOW_LANES			32
+//const PROGPOW_REGS			16
+//const PROGPOW_CACHE_BYTES             (16*1024)
+//const PROGPOW_CNT_MEM                 ETHASH_NUM_DATASET_ACCESSES
+//const PROGPOW_CNT_CACHE               8
+//const PROGPOW_CNT_MATH		8
+//const PROGPOW_CACHE_WORDS  (PROGPOW_CACHE_BYTES / sizeof(uint32_t))
+//const PROGPOW_EPOCH_START (531)
+
+macro_rules! rnd {
+    () => (kiss99(prog_rnd));
+}
+
